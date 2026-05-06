@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprite Studio Pro | 终极动画合成工作站</title>
+    <!-- 引入外部字体让界面更高级 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- 引入 gifshot.js 用于在纯前端生成 GIF 动图 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.3.2/gifshot.min.js"></script>
+    <style>
+        /* ================= 1. 全局设计变量与基础重置 ================= */
+        :root {
+            --primary: #6366f1;       
+            --primary-hover: #4f46e5;
+            --success: #10b981;       
+            --danger: #ef4444;        
+            --bg-main: #f8fafc;       
+            --bg-sidebar: #0f172a;    
+            --bg-card: #ffffff;       
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-light: #e2e8f0;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* ================= 2. 布局: 侧边栏与主工作区 ================= */
+        .sidebar {
+            width: 260px;
+            background-color: var(--bg-sidebar);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        .brand {
+            padding: 24px;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .brand-icon {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .nav-menu { padding: 20px 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+
+        .nav-item {
+            background: transparent;
+            color: #94a3b8;
+            border: none;
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            text-align: left;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
+        .nav-item.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        /* 专门为 GitHub 按钮设计的样式 */
+        .nav-github {
+            margin-top: auto; /* 将按钮推到侧边栏最底部 */
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .nav-github:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.3);
+        }
+
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px 40px;
+            position: relative;
+        }
+
+        /* ================= 3. 标签页与动画 ================= */
+        .tab-content {
+            display: none;
+            animation: slideFadeIn 0.4s ease forwards;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .tab-content.active { display: block; }
+
+        @keyframes slideFadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ================= 4. 卡片与通用组件 ================= */
+        .page-header { margin-bottom: 24px; }
+        .page-title { font-size: 28px; font-weight: 700; color: var(--text-main); margin: 0 0 8px 0; }
+        .page-desc { color: var(--text-muted); margin: 0; font-size: 15px; }
+
+        .panel {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-soft);
+            margin-bottom: 24px;
+            border: 1px solid var(--border-light);
+            transition: box-shadow 0.3s;
+        }
+        .panel:hover { box-shadow: var(--shadow-hover); }
+
+        .panel-title {
+            font-size: 16px; font-weight: 600; color: var(--text-main);
+            margin-top: 0; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .control-group { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+        label { font-size: 14px; font-weight: 500; color: var(--text-main); display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        
+        input[type="number"], select {
+            padding: 8px 12px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            background: #f8fafc;
+            transition: all 0.2s;
+            outline: none;
+        }
+        input[type="number"]:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            background: white;
+        }
+        input[type="number"] { width: 90px; }
+        input[type="radio"] { accent-color: var(--primary); transform: scale(1.2); }
+
+        input[type="file"] { font-size: 14px; color: var(--text-muted); }
+        input[type="file"]::file-selector-button {
+            padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-light);
+            background: white; color: var(--text-main); font-weight: 500;
+            cursor: pointer; transition: all 0.2s; margin-right: 12px; font-family: inherit;
+        }
+        input[type="file"]::file-selector-button:hover { background: #f1f5f9; border-color: #cbd5e1; }
+
+        button, .btn {
+            padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px;
+            font-weight: 600; font-family: inherit; cursor: pointer; display: inline-flex;
+            align-items: center; gap: 8px; transition: all 0.2s ease; text-decoration: none;
+        }
+        button:active, .btn:active { transform: scale(0.97); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #059669; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-secondary { background: #e2e8f0; color: #475569; }
+        .btn-secondary:hover { background: #cbd5e1; color: #1e293b; }
+        .hidden { display: none !important; }
+
+        .canvas-bg {
+            background-color: #e5e5f7;
+            background-image:  repeating-linear-gradient(45deg, #d4d4eb 25%, transparent 25%, transparent 75%, #d4d4eb 75%, #d4d4eb), repeating-linear-gradient(45deg, #d4d4eb 25%, #e5e5f7 25%, #e5e5f7 75%, #d4d4eb 75%, #d4d4eb);
+            background-position: 0 0, 10px 10px; background-size: 20px 20px;
+            border: 2px dashed #cbd5e1; border-radius: var(--radius-lg); overflow: hidden;
+        }
+
+        /* ================= 辅助图例样式 ================= */
+        .legend-bar { 
+            display: flex; gap: 20px; font-size: 13px; align-items: center; 
+            background: rgba(255,255,255,0.9); padding: 10px 20px; 
+            border-radius: 8px; margin-bottom: 20px; display: inline-flex;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .legend-bar span { display: flex; align-items: center; gap: 6px; font-weight: 500;}
+        .box-blue { width: 14px; height: 14px; border: 2px dashed #3b82f6; border-radius: 3px; }
+        .box-red { width: 14px; height: 14px; border: 2px solid #ef4444; border-radius: 3px; }
+        .box-green { width: 14px; height: 14px; border: 2px solid #10b981; background: rgba(16,185,129,0.2); border-radius: 3px; }
+
+        /* ================= 画布与时间轴特定样式 ================= */
+        .source-container { position: relative; overflow: auto; max-height: 500px; padding: 20px; text-align: center; }
+        .source-canvas { cursor: crosshair; display: block; background: white; margin: 0 auto; box-shadow: var(--shadow-soft); outline: none; }
+        
+        .timeline { 
+            display: flex; gap: 12px; overflow-x: auto; padding: 20px; min-height: 140px; 
+            background: #1e293b; 
+            border-radius: var(--radius-md); border: 4px solid #334155; 
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .frame-item { 
+            position: relative; border: 2px solid #475569; cursor: grab; background: #0f172a; 
+            border-radius: 6px; padding: 4px; transition: 0.2s; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+        .frame-item:hover { border-color: var(--primary); }
+        .frame-item:active { cursor: grabbing; transform: scale(0.95); }
+        .frame-item.drag-over { border-color: var(--success); transform: scale(1.05); }
+        .delete-btn { 
+            position: absolute; top: -8px; right: -8px; background: var(--danger); 
+            color: white; border-radius: 50%; width: 20px; height: 20px; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; cursor: pointer; border: 2px solid #1e293b; transition: 0.2s; z-index: 5;
+        }
+        .delete-btn:hover { transform: scale(1.2); }
+    </style>
+</head>
+<body>
+
+    <!-- 左侧导航栏 -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-icon">🎮</div>
+            Sprite Studio
+        </div>
+        <nav class="nav-menu">
+            <button class="nav-item active" onclick="switchTab('tab2', this)">
+                <span>🌟</span> 终极抓帧与GIF生成
+            </button>
+            <button class="nav-item" onclick="switchTab('tab1', this)">
+                <span>📏</span> 传统静态导出
+            </button>
+
+            <!-- ======= 👇 你的专属 GitHub 链接按钮 👇 ======= -->
+            <a href="https://github.com/luoluoluo81099-ai/-.git" target="_blank" class="nav-item nav-github">
+                <span>💻</span> GitHub 源码
+            </a>
+            <!-- ============================================== -->
+        </nav>
+    </aside>
+
+    <!-- 右侧主工作区 -->
+    <main class="main-content">
+
+        <!-- ================= 工具 2: 终极混合自由 GIF ================= -->
+        <div id="tab2" class="tab-content active">
+            <div class="page-header">
+                <h2 class="page-title">跨文件精准抓帧构建器</h2>
+                <p class="page-desc">不仅支持跨越不同图片混合提取帧，还支持在提取前精准<b>微调裁剪边界</b>，过滤掉多余空白，生成完美动图。</p>
+            </div>
+            
+            <div class="panel" style="border-left: 4px solid var(--primary);">
+                <div class="panel-title">📐 1. 载入素材与边界控制 (可重复上传不同图片)</div>
+                
+                <div class="control-group">
+                    <label>载入切片素材: <input type="file" id="t2-image-upload" accept="image/*"></label>
+                    <label>原图划分行数: <input type="number" id="t2-rows" value="1" min="1"></label>
+                    <label>原图划分列数: <input type="number" id="t2-cols" value="1" min="1"></label>
+                    <button class="btn-primary" id="t2-apply-grid">📏 覆盖网格并重置</button>
+                </div>
+                
+                <div class="control-group" style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border-light);">
+                    <label>新抠图宽 (px): <input type="number" id="t2-newW" placeholder="同原格"></label>
+                    <label>新抠图高 (px): <input type="number" id="t2-newH" placeholder="同原格"></label>
+                    <label>默认对齐收缩:
+                        <select id="t2-align">
+                            <option value="bottom">贴底 (RPG行走图)</option>
+                            <option value="center">居中 (技能特效图)</option>
+                        </select>
+                    </label>
+                    <button class="btn-secondary" id="t2-reset-frame">🔄 重置单格</button>
+                </div>
+
+                <div class="control-group" style="margin-top: 16px; background: #e0e7ff; padding: 12px; border-radius: 8px;">
+                    <label style="font-weight: bold; color: var(--primary); margin-right: 10px;">🖱️ 画布操作模式：</label>
+                    <label style="color: #4338ca;"><input type="radio" name="t2-mode" value="adjust" checked> 📐 <b>调整模式</b> (点击红框选中，支持拖拽/方向键微调)</label>
+                    <label style="color: #047857;"><input type="radio" name="t2-mode" value="pick"> 🎯 <b>提取模式</b> (点击红框直接精准抠出并加入时间轴)</label>
+                </div>
+
+                <div class="canvas-bg source-container" style="margin-top: 20px;">
+                    <div class="legend-bar">
+                        <span><div class="box-blue"></div> 原始网格</span>
+                        <span><div class="box-red"></div> 实际抠图区域</span>
+                        <span><div class="box-green"></div> 选中微调区</span>
+                    </div>
+                    <canvas id="t2-source-canvas" class="source-canvas" tabindex="0"></canvas>
+                </div>
+            </div>
+
+            <div class="panel" style="background: #0f172a; border-color: #0f172a;">
+                <div class="panel-title" style="color: white; margin-bottom: 20px; display: flex; justify-content: space-between;">
+                    <span>🎬 2. 混合动画时间轴 (<span id="t2-frame-count" style="color: var(--primary);">0</span> 帧)</span>
+                    <button class="btn-danger" id="t2-clear-timeline" style="padding: 6px 12px; font-size: 13px;">🗑️ 清空整条序列</button>
+                </div>
+                <div id="t2-timeline" class="timeline">
+                    <span style="color: #64748b; margin: auto; font-size: 14px;">序列空空如也，请将模式切换为"提取模式"并在上方点击画板...</span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">📦 3. 渲染最终混合 GIF</div>
+                <div class="control-group">
+                    <label>动图背景底色:
+                        <select id="t2-bg-color">
+                            <option value="#ffffff">纯白背景 (默认)</option>
+                            <option value="#00ff00">绿幕背景 (Chroma Key)</option>
+                            <option value="#000000">纯黑背景</option>
+                        </select>
+                    </label>
+                    <label>时间轴输出对齐:
+                        <select id="t2-gif-align">
+                            <option value="bottom">统一贴底对齐</option>
+                            <option value="center">统一居中对齐</option>
+                        </select>
+                    </label>
+                    <label>播放帧率 (FPS): <input type="number" id="t2-fps" value="10" min="1" max="60" style="width: 70px;"></label>
+                    <button class="btn-primary" id="t2-generate-btn">✨ 智能对齐并渲染</button>
+                    <a id="t2-download-btn" class="btn btn-success hidden" download="mixed_perfect_animation.gif">⬇ 导出动图</a>
+                </div>
+                <div id="t2-result-container" class="canvas-bg hidden" style="margin-top: 20px; padding: 20px; overflow: auto; text-align: center;">
+                    <img id="t2-result-img" style="background: white; box-shadow: var(--shadow-soft); max-width: 100%;">
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= 工具 1: 传统静态导出 ================= -->
+        <div id="tab1" class="tab-content">
+            <div class="page-header">
+                <h2 class="page-title">传统静态图片批量裁剪</h2>
+                <p class="page-desc">如果你不需要做GIF，只需要调整边界后把整张大图重新排版导出 PNG，可以使用这里。</p>
+            </div>
+            
+            <div class="panel" style="border-left: 4px solid var(--success);">
+                <div class="control-group">
+                    <input type="file" id="t1-imageLoader" accept="image/png, image/jpeg, image/webp">
+                    <label>图片划分列数: <input type="number" id="t1-colInput" value="4" min="1"></label>
+                    <label>图片划分行数: <input type="number" id="t1-rowInput" value="4" min="1"></label>
+                </div>
+                <div class="control-group" id="t1-controls" style="display: none; border-top: 1px solid var(--border-light); margin-top: 20px; padding-top: 20px;">
+                    <label>批量裁剪为新宽(px): <input type="number" id="t1-frameW" min="1"></label>
+                    <label>批量裁剪为新高(px): <input type="number" id="t1-frameH" min="1"></label>
+                    <label>向内收缩对齐方式:
+                        <select id="t1-alignMode">
+                            <option value="bottom">贴近底边对齐</option>
+                            <option value="center">向中心点对齐</option>
+                        </select>
+                    </label>
+                    <button class="btn-primary" id="t1-exportBtn" style="margin-left: auto;">⬇️ 导出裁剪后的大图</button>
+                </div>
+            </div>
+            <div class="panel canvas-bg source-container" id="t1-canvasContainer" style="display: none;">
+                <canvas id="t1-canvas" class="source-canvas"></canvas>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // ================= 全局切换 =================
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.nav-item:not(.nav-github)').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btnElement.classList.add('active');
+        }
+
+        // ================= 工具 1: 传统静态处理完整逻辑 =================
+        (() => {
+            const imageLoader = document.getElementById('t1-imageLoader');
+            const colInput = document.getElementById('t1-colInput');
+            const rowInput = document.getElementById('t1-rowInput');
+            const canvas = document.getElementById('t1-canvas');
+            const ctx = canvas.getContext('2d');
+            const frameWInput = document.getElementById('t1-frameW');
+            const frameHInput = document.getElementById('t1-frameH');
+            const alignMode = document.getElementById('t1-alignMode');
+            const controls = document.getElementById('t1-controls');
+            const canvasContainer = document.getElementById('t1-canvasContainer');
+            const exportBtn = document.getElementById('t1-exportBtn');
+
+            let img = new Image();
+            let cols = 4, rows = 4, origCellW = 0, origCellH = 0;
+
+            imageLoader.addEventListener('change', e => {
+                const reader = new FileReader();
+                reader.onload = event => {
+                    img.onload = () => {
+                        canvas.width = img.width; canvas.height = img.height;
+                        updateGridDimensions();
+                        frameWInput.value = Math.floor(origCellW); 
+                        frameHInput.value = Math.floor(origCellH);
+                        controls.style.display = 'flex'; 
+                        canvasContainer.style.display = 'block'; 
+                        draw();
+                    }
+                    img.src = event.target.result;
+                }
+                if (e.target.files && e.target.files[0]) reader.readAsDataURL(e.target.files[0]);
+            });
+            
+            colInput.addEventListener('input', handleGridChange);
+            rowInput.addEventListener('input', handleGridChange);
+            frameWInput.addEventListener('input', draw);
+            frameHInput.addEventListener('input', draw);
+            alignMode.addEventListener('change', draw);
+            exportBtn.addEventListener('click', exportNewSpriteSheet);
+
+            function handleGridChange() {
+                cols = Math.max(1, parseInt(colInput.value) || 1); 
+                rows = Math.max(1, parseInt(rowInput.value) || 1);
+                if (img.src) { updateGridDimensions(); draw(); }
+            }
+            
+            function updateGridDimensions() { 
+                origCellW = img.width / cols; 
+                origCellH = img.height / rows; 
+            }
+            
+            function draw() {
+                if (!img.src) return;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 0.6; ctx.drawImage(img, 0, 0); ctx.globalAlpha = 1.0;
+                
+                const newW = parseInt(frameWInput.value) || origCellW;
+                const newH = parseInt(frameHInput.value) || origCellH;
+                const mode = alignMode.value;
+
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const originX = c * origCellW, originY = r * origCellH;
+                        
+                        // 绘制原始蓝色虚线框
+                        ctx.strokeStyle = '#3b82f6'; ctx.setLineDash([8, 8]); ctx.lineWidth = 2; 
+                        ctx.strokeRect(originX, originY, origCellW, origCellH);
+                        
+                        let baseOffsetX = (origCellW - newW) / 2;
+                        let baseOffsetY = mode === 'center' ? (origCellH - newH) / 2 : (origCellH - newH);
+
+                        // 绘制裁剪红框
+                        ctx.setLineDash([]);
+                        ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2; 
+                        ctx.strokeRect(originX + baseOffsetX, originY + baseOffsetY, newW, newH);
+                    }
+                }
+            }
+            
+            function exportNewSpriteSheet() {
+                if(!img.src) return alert("请先上传图片！");
+                
+                const newW = parseInt(frameWInput.value), newH = parseInt(frameHInput.value), mode = alignMode.value;
+                const expCanvas = document.createElement('canvas');
+                expCanvas.width = newW * cols; 
+                expCanvas.height = newH * rows;
+                const expCtx = expCanvas.getContext('2d');
+
+                // 清除默认背景，保证导出为透明 PNG
+                expCtx.clearRect(0, 0, expCanvas.width, expCanvas.height);
+
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const originX = c * origCellW, originY = r * origCellH;
+                        let baseOffsetX = (origCellW - newW) / 2;
+                        let baseOffsetY = mode === 'center' ? (origCellH - newH) / 2 : (origCellH - newH);
+                        const srcX = originX + baseOffsetX;
+                        const srcY = originY + baseOffsetY;
+                        
+                        // 将每个红框内的画面按矩阵顺序重新画到新画布上
+                        expCtx.drawImage(
+                            img, 
+                            srcX, srcY, newW, newH, 
+                            c * newW, r * newH, newW, newH
+                        );
+                    }
+                }
+                
+                // 触发下载
+                const link = document.createElement('a'); 
+                link.download = `static_cropped_${newW}x${newH}.png`; 
+                link.href = expCanvas.toDataURL('image/png'); 
+                link.click();
+            }
+        })();
+
+        // ================= 工具 2: 终极混合抓帧 GIF 逻辑 =================
+        (() => {
+            const up = document.getElementById('t2-image-upload'), btnGrid = document.getElementById('t2-apply-grid');
+            const sc = document.getElementById('t2-source-canvas'), sCtx = sc.getContext('2d');
+            const timeline = document.getElementById('t2-timeline'), countSpan = document.getElementById('t2-frame-count');
+            const clearTimelineBtn = document.getElementById('t2-clear-timeline'), resetFrameBtn = document.getElementById('t2-reset-frame');
+            
+            const inR = document.getElementById('t2-rows'), inC = document.getElementById('t2-cols');
+            const inNewW = document.getElementById('t2-newW'), inNewH = document.getElementById('t2-newH');
+            const alignSel = document.getElementById('t2-align');
+            
+            const btnGen = document.getElementById('t2-generate-btn'), btnDl = document.getElementById('t2-download-btn');
+            const fpsInput = document.getElementById('t2-fps'), bgColorSelect = document.getElementById('t2-bg-color');
+            const gifAlignSel = document.getElementById('t2-gif-align');
+            const resultImg = document.getElementById('t2-result-img'), resultContainer = document.getElementById('t2-result-container');
+
+            function getMode() { return document.querySelector('input[name="t2-mode"]:checked').value; }
+
+            // 画板图片与网格状态
+            let currentImg = null, loaded = false;
+            let origCols = 1, origRows = 1, origCellW = 0, origCellH = 0;
+            let frameOffsets = []; // 记录当前图片各个格子的独立XY偏移
+            let selectedGridIndex = null;
+            let isDragging = false, dragStartX = 0, dragStartY = 0, initialManualX = 0, initialManualY = 0;
+            
+            // 时间轴状态 { imgRef, sx, sy, sw, sh }
+            let frames = []; 
+
+            // 监听：参数变动实时重绘画板
+            inNewW.addEventListener('input', drawGrid);
+            inNewH.addEventListener('input', drawGrid);
+            alignSel.addEventListener('change', drawGrid);
+
+            // 监听：操作模式切换，切换回调整时清除选中高亮
+            document.getElementsByName('t2-mode').forEach(r => {
+                r.addEventListener('change', () => {
+                    if(getMode() === 'pick') selectedGridIndex = null;
+                    drawGrid();
+                });
+            });
+
+            // 监听：重置单个网格的偏移
+            resetFrameBtn.addEventListener('click', () => {
+                if(selectedGridIndex !== null) {
+                    frameOffsets[selectedGridIndex] = {x: 0, y: 0};
+                    drawGrid();
+                }
+            });
+
+            // 监听：清空时间轴
+            clearTimelineBtn.addEventListener('click', () => { frames = []; renderTimeline(); });
+
+            // 监听：上传新图片
+            up.addEventListener('change', e => {
+                if(!e.target.files[0]) return;
+                const r = new FileReader(); 
+                r.onload = ev => { 
+                    currentImg = new Image(); 
+                    currentImg.onload = () => { loaded = true; applyGridAndReset(); }; 
+                    currentImg.src = ev.target.result; 
+                };
+                r.readAsDataURL(e.target.files[0]);
+            });
+
+            btnGrid.addEventListener('click', applyGridAndReset);
+            
+            function applyGridAndReset() {
+                if(!loaded || !currentImg) return;
+                origRows = Math.max(1, parseInt(inR.value) || 1);
+                origCols = Math.max(1, parseInt(inC.value) || 1);
+                origCellW = currentImg.width / origCols;
+                origCellH = currentImg.height / origRows;
+                sc.width = currentImg.width; 
+                sc.height = currentImg.height; 
+                inNewW.value = Math.floor(origCellW);
+                inNewH.value = Math.floor(origCellH);
+                
+                frameOffsets = Array.from({ length: origCols * origRows }, () => ({x:0, y:0}));
+                selectedGridIndex = null;
+                drawGrid();
+            }
+
+            function drawGrid() {
+                if(!loaded || !currentImg) return;
+                sCtx.clearRect(0, 0, sc.width, sc.height);
+                
+                // 绘制底层原图
+                sCtx.globalAlpha = 0.6; 
+                sCtx.drawImage(currentImg, 0, 0); 
+                sCtx.globalAlpha = 1.0;
+                
+                const newW = parseInt(inNewW.value) || origCellW;
+                const newH = parseInt(inNewH.value) || origCellH;
+                const mode = alignSel.value;
+
+                for (let r = 0; r < origRows; r++) {
+                    for (let c = 0; c < origCols; c++) {
+                        const index = r * origCols + c;
+                        const originX = c * origCellW, originY = r * origCellH;
+                        
+                        // 画蓝色虚线外边框 (原图物理切割线)
+                        sCtx.strokeStyle = '#3b82f6'; sCtx.setLineDash([6, 6]); sCtx.lineWidth = 1.5; 
+                        sCtx.strokeRect(originX, originY, origCellW, origCellH);
+                        
+                        // 计算收缩后的内框 (包含用户的拖拽偏移)
+                        let baseOffsetX = (origCellW - newW) / 2;
+                        let baseOffsetY = mode === 'center' ? (origCellH - newH) / 2 : (origCellH - newH);
+                        const manualX = frameOffsets[index]?.x || 0;
+                        const manualY = frameOffsets[index]?.y || 0;
+
+                        const finalX = originX + baseOffsetX + manualX;
+                        const finalY = originY + baseOffsetY + manualY;
+
+                        sCtx.setLineDash([]);
+                        if (index === selectedGridIndex && getMode() === 'adjust') {
+                            // 选中调整状态：变绿加粗
+                            sCtx.strokeStyle = '#10b981'; sCtx.lineWidth = 4; 
+                            sCtx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+                            sCtx.fillRect(finalX, finalY, newW, newH);
+                        } else { 
+                            // 正常状态：红色边框
+                            sCtx.strokeStyle = '#ef4444'; sCtx.lineWidth = 2; 
+                        }
+                        sCtx.strokeRect(finalX, finalY, newW, newH);
+                    }
+                }
+            }
+
+            // ================= 鼠标画板交互逻辑 =================
+            function getMousePos(e) {
+                var rect = sc.getBoundingClientRect();
+                return { x: (e.clientX - rect.left) / (rect.right - rect.left) * sc.width, y: (e.clientY - rect.top) / (rect.bottom - rect.top) * sc.height };
+            }
+
+            sc.addEventListener('mousedown', e => {
+                if(!loaded || !currentImg) return;
+                const p = getMousePos(e);
+                const c = Math.floor(p.x / origCellW), r = Math.floor(p.y / origCellH);
+                const index = r * origCols + c;
+                
+                if (c >= 0 && c < origCols && r >= 0 && r < origRows) {
+                    if (getMode() === 'adjust') {
+                        // 调整模式：选中并准备拖拽
+                        selectedGridIndex = index;
+                        isDragging = true;
+                        dragStartX = p.x; dragStartY = p.y;
+                        initialManualX = frameOffsets[index].x;
+                        initialManualY = frameOffsets[index].y;
+                        sc.focus();
+                        drawGrid();
+                    } else if (getMode() === 'pick') {
+                        // 提取模式：直接计算当前红框的绝对坐标，并抠图入库
+                        const newW = parseInt(inNewW.value) || origCellW;
+                        const newH = parseInt(inNewH.value) || origCellH;
+                        let baseOffsetX = (origCellW - newW) / 2;
+                        let baseOffsetY = alignSel.value === 'center' ? (origCellH - newH) / 2 : (origCellH - newH);
+                        
+                        const srcX = c * origCellW + baseOffsetX + frameOffsets[index].x;
+                        const srcY = r * origCellH + baseOffsetY + frameOffsets[index].y;
+                        
+                        frames.push({
+                            imgRef: currentImg,
+                            sx: srcX, sy: srcY,
+                            sw: newW, sh: newH
+                        });
+                        
+                        // 顺便给一个简单的视觉反馈
+                        selectedGridIndex = index;
+                        drawGrid();
+                        setTimeout(() => { selectedGridIndex = null; drawGrid(); }, 150);
+                        
+                        renderTimeline();
+                    }
+                } else {
+                    selectedGridIndex = null; drawGrid();
+                }
+            });
+
+            window.addEventListener('mousemove', e => {
+                if (!isDragging || selectedGridIndex === null || getMode() !== 'adjust') return;
+                const p = getMousePos(e);
+                frameOffsets[selectedGridIndex].x = initialManualX + (p.x - dragStartX); 
+                frameOffsets[selectedGridIndex].y = initialManualY + (p.y - dragStartY);
+                drawGrid();
+            });
+
+            window.addEventListener('mouseup', () => isDragging = false);
+
+            sc.addEventListener('keydown', e => {
+                if (selectedGridIndex === null || getMode() !== 'adjust') return;
+                let step = e.shiftKey ? 10 : 1;
+                switch (e.key) {
+                    case 'ArrowLeft': case 'a': frameOffsets[selectedGridIndex].x -= step; break;
+                    case 'ArrowRight': case 'd': frameOffsets[selectedGridIndex].x += step; break;
+                    case 'ArrowUp': case 'w': frameOffsets[selectedGridIndex].y -= step; break;
+                    case 'ArrowDown': case 's': frameOffsets[selectedGridIndex].y += step; break;
+                    default: return;
+                }
+                e.preventDefault(); drawGrid();
+            });
+
+            // ================= 时间轴渲染逻辑 =================
+            function renderTimeline() {
+                timeline.innerHTML = ''; countSpan.innerText = frames.length;
+                if(!frames.length) {
+                    btnGen.disabled = true;
+                    return timeline.innerHTML = '<span style="color: #64748b; margin: auto; font-size: 14px;">序列空空如也，请将模式切换为"提取模式"并在上方点击画板...</span>';
+                }
+                btnGen.disabled = false;
+                
+                frames.forEach((f, i) => {
+                    const w = document.createElement('div'); w.className = 'frame-item'; w.draggable = true;
+                    
+                    const c = document.createElement('canvas'); 
+                    c.width = f.sw; c.height = f.sh; 
+                    
+                    // 为了让时间轴好看，按比例缩小统一高度显示
+                    c.style.height = '80px'; 
+                    c.style.width = (f.sw/f.sh)*80 + 'px'; 
+                    c.style.display = 'block';
+
+                    // 精确渲染该帧抠出的内容
+                    c.getContext('2d').drawImage(f.imgRef, f.sx, f.sy, f.sw, f.sh, 0, 0, f.sw, f.sh);
+                    
+                    const del = document.createElement('div'); del.className = 'delete-btn'; del.innerHTML = '×';
+                    del.onclick = () => { frames.splice(i, 1); renderTimeline(); };
+                    
+                    w.addEventListener('dragstart', () => { dragIdx = i; setTimeout(()=>w.style.opacity='0.5',0); });
+                    w.addEventListener('dragend', () => { w.style.opacity='1'; document.querySelectorAll('.frame-item').forEach(el=>el.classList.remove('drag-over')); });
+                    w.addEventListener('dragover', e => { e.preventDefault(); w.classList.add('drag-over'); });
+                    w.addEventListener('dragleave', () => w.classList.remove('drag-over'));
+                    w.addEventListener('drop', e => {
+                        e.preventDefault(); w.classList.remove('drag-over'); 
+                        if(dragIdx===i) return;
+                        const itm = frames.splice(dragIdx, 1)[0]; 
+                        frames.splice(i, 0, itm); renderTimeline();
+                    });
+                    
+                    w.appendChild(c); w.appendChild(del); timeline.appendChild(w);
+                });
+            }
+
+            // ================= 智能对齐 GIF 生成逻辑 =================
+            btnGen.addEventListener('click', () => {
+                if(!frames.length) return alert("请先在上方画板提取帧！");
+                if(typeof gifshot === 'undefined') return alert("缺少 gifshot.js，请确保网络畅通！");
+                
+                btnGen.innerHTML = "⏳ 正在分析对齐与编码...";
+                btnGen.disabled = true;
+                btnDl.classList.add('hidden');
+
+                const fps = parseInt(fpsInput.value) || 10;
+                const interval = 1 / fps; 
+                const selectedBgColor = bgColorSelect.value;
+                const gifAlign = gifAlignSel.value;
+
+                // 1. 扫描出本次动画的最大物理宽高底板
+                let maxW = 0, maxH = 0;
+                frames.forEach(f => {
+                    if (f.sw > maxW) maxW = f.sw;
+                    if (f.sh > maxH) maxH = f.sh;
+                });
+
+                // 2. 将所有异形切片画到标准大画布上
+                const frameBase64Array = frames.map(f => {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = maxW; 
+                    tempCanvas.height = maxH;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    
+                    // 铺纯色防残影
+                    tempCtx.fillStyle = selectedBgColor;
+                    tempCtx.fillRect(0, 0, maxW, maxH);
+                    
+                    // 计算偏移动画对齐逻辑
+                    const offsetX = (maxW - f.sw) / 2; // 水平永远居中
+                    const offsetY = gifAlign === 'center' ? (maxH - f.sh) / 2 : (maxH - f.sh); // 垂直：居中 或 贴底(角色双脚对齐)
+
+                    // 绘制图像
+                    tempCtx.drawImage(
+                        f.imgRef, 
+                        f.sx, f.sy, f.sw, f.sh, 
+                        offsetX, offsetY, f.sw, f.sh
+                    );
+                    
+                    return tempCanvas.toDataURL('image/png');
+                });
+
+                // 3. 编码 GIF
+                gifshot.createGIF({
+                    images: frameBase64Array,
+                    gifWidth: maxW,
+                    gifHeight: maxH,
+                    interval: interval,
+                    numWorkers: 2, 
+                    sampleInterval: 10 
+                }, function(obj) {
+                    btnGen.innerHTML = "✨ 智能对齐并渲染";
+                    btnGen.disabled = false;
+
+                    if(!obj.error) {
+                        resultImg.src = obj.image;
+                        resultContainer.classList.remove('hidden');
+                        btnDl.href = obj.image;
+                        btnDl.classList.remove('hidden');
+                    } else {
+                        alert("GIF 生成失败，可能是素材体积过大。");
+                    }
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
